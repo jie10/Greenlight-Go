@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/alexedwards/flow"
 	"net/http"
-	"strconv"
 )
 
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,9 +10,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
-	params := flow.Param(r.Context(), "id")
-
-	id, err := strconv.ParseInt(params, 10, 64)
+	id, err := app.readIDParam(r)
 	if err != nil || id < 1 {
 		http.NotFound(w, r)
 		return
