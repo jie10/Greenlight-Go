@@ -18,15 +18,18 @@ func (r Runtime) MarshalJSON() ([]byte, error) {
 }
 
 func (r *Runtime) unmarshalJSON(jsonValue []byte) error {
+	str := string(jsonValue)
 
-	unquotedJSONValue, err := strconv.Unquote(string(jsonValue))
+	if !strings.HasSuffix(str, "\"mins\"") {
+		return ErrInvalidRuntimeFormat
+	}
+	unquotedJSONValue, err := strconv.Unquote(str)
 	if err != nil {
 		return ErrInvalidRuntimeFormat
 	}
 
 	parts := strings.Split(unquotedJSONValue, " ")
-
-	if len(parts) != 2 || parts[1] != "mins" {
+	if len(parts) != 2 {
 		return ErrInvalidRuntimeFormat
 	}
 
