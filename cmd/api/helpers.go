@@ -16,31 +16,29 @@ type envelope map[string]any
 func (app *application) readIDParam(r *http.Request) (int64, error) {
 	params := flow.Param(r.Context(), "id")
 
-	id, err := strconv.ParseInt(params, 10, 64)
+	id, err := strconv.Atoi(params)
 	if err != nil || id < 1 {
 		return 0, errors.New("invalid id parameter")
 	}
 
-	return id, nil
+	return int64(id), nil
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
-	js, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	js = append(js, '\n')
-
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(js)
 
-	return nil
+	js, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(js)
+	return err
 }
 
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -88,8 +86,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		}
 	}
 
-	err = dec.Decode(&struct{}{})
-	if !errors.Is(err, io.EOF) {
+	if err = dec.Decode(&struct{}{}); err != io.EOF {
 		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
