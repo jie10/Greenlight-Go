@@ -18,7 +18,10 @@ type config struct {
 	port int
 	env  string
 	db   struct {
-		dsn string
+		dsn         string
+		maxOpenCons int
+		maxIdleCons int
+		maxIdleTime time.Duration
 	}
 }
 
@@ -33,6 +36,9 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment(development|staging|production)")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://postgres:admin123@localhost/greenlight?sslmode=disable", "PostgresSQL DSN")
+	flag.IntVar(&cfg.db.maxOpenCons, "db-max-open-cons", 25, "PostgresSQL max open connections")
+	flag.IntVar(&cfg.db.maxIdleCons, "db-max-idle-cons", 25, "PostgresSQL max idle connections")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgresSQL max connection idle time")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -43,12 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			logger.Error(err.Error())
-		}
-	}(db)
+	defer db.Close()
 	logger.Info("database connection pool established")
 
 	app := &application{
@@ -79,6 +80,11 @@ func openDB(cfg config) (*sql.DB, error) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	db.SetMaxOpenConns(cfg.db.maxOpenCons)
+	db.SetMaxIdleConns(cfg.db.maxIdleCons)
+	db.SetConnMaxIdleTime(cfg.db.maxIdleTime)
+
 	defer cancel()
 
 	err = db.PingContext(ctx)
