@@ -5,11 +5,15 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/lib/pq"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 const version = "1.0.0"
@@ -35,7 +39,7 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment(development|staging|production)")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://postgres:admin123@localhost/greenlight?sslmode=disable", "PostgresSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://greenlight:admin123@localhost/greenlight?sslmode=disable", "PostgresSQL DSN")
 	flag.IntVar(&cfg.db.maxOpenCons, "db-max-open-cons", 25, "PostgresSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleCons, "db-max-idle-cons", 25, "PostgresSQL max idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgresSQL max connection idle time")
@@ -50,7 +54,28 @@ func main() {
 	}
 
 	defer db.Close()
+
 	logger.Info("database connection pool established")
+
+	migrationDriver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	migrator, err := migrate.NewWithDatabaseInstance("file://./migrations", "greenlight", migrationDriver)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	err = migrator.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	logger.Info("database migrations applied")
 
 	app := &application{
 		config: cfg,
