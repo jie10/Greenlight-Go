@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/jie10/greenlight-go/internal/data"
 	_ "github.com/lib/pq"
 	"log/slog"
 	"net/http"
@@ -32,6 +34,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -53,7 +56,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error(err.Error())
+			os.Exit(1)
+		}
+	}(db)
 
 	logger.Info("database connection pool established")
 
@@ -70,7 +79,7 @@ func main() {
 	}
 
 	err = migrator.Up()
-	if err != nil && err != migrate.ErrNoChange {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
@@ -80,6 +89,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
