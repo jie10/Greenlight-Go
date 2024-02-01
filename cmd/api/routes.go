@@ -15,6 +15,7 @@ func (app *application) routes() *flow.Mux {
 	router.Handle("/v1/movies", app.recoverPanic(http.HandlerFunc(app.createMovieHandler)), "POST")
 	router.Handle("/v1/movies/:id", app.recoverPanic(http.HandlerFunc(app.showMovieHandler)), "GET")
 	router.Handle("/v1/movies/:id", app.recoverPanic(http.HandlerFunc(app.updateMovieHandler)), "PATCH")
+	router.Handle("/v1/movies/:id", app.recoverPanic(http.HandlerFunc(app.deleteMovieHandler)), "DELETE")
 
 	return router
 }
