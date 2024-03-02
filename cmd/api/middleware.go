@@ -19,7 +19,7 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) ratelimit(next http.Handler) http.Handler {
+func (app *application) rateLimit(next http.Handler) http.Handler {
 	limiter := rate.NewLimiter(2, 4)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
