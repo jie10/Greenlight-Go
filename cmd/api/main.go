@@ -5,12 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jie10/greenlight-go/internal/data"
 	_ "github.com/lib/pq"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
@@ -102,20 +100,11 @@ func main() {
 		models: data.NewModels(db),
 	}
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	err = app.serve()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
-
-	logger.Info("starting server", "addr", srv.Addr, "env", cfg.env)
-
-	err = srv.ListenAndServe()
-	logger.Error(err.Error())
-	os.Exit(1)
 }
 
 func openDB(cfg config) (*sql.DB, error) {
