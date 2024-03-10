@@ -86,6 +86,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	currentVersion, dirty, err := migrator.Version()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	if dirty {
+		logger.Info("Detected dirty database version: ", currentVersion, ". Attempting to fix...")
+		err = migrator.Force(int(currentVersion))
+		if err != nil {
+			logger.Error("Failed to fix the dirty database: ", err.Error())
+			os.Exit(1)
+		} else {
+			logger.Info("Successfully forced the version to: ", currentVersion)
+		}
+	}
+
 	err = migrator.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		logger.Error(err.Error())
